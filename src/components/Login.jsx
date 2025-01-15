@@ -27,7 +27,7 @@ function Login() {
 
     // المعلومات الصحيحة للدخول
     const validCredentials = [
-      { username: 'admin', password: 'admin123' },
+      { username: 'shtayer', password: 'Shtayer650' },
       { username: 'مسؤول', password: '12345' }
     ];
 
