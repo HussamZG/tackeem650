@@ -1,13 +1,28 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import CryptoJS from 'crypto-js'; // استيراد مكتبة التشفير
 
 function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+
+  // مفتاح التشفير (يجب تخزينه بشكل آمن)
+  const SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY || 'default-secret-key-650';
+
+  // دالة تشفير كلمة المرور
+  const encryptPassword = (password) => {
+    return CryptoJS.AES.encrypt(password, SECRET_KEY).toString();
+  };
+
+  // دالة فك تشفير كلمة المرور
+  const decryptPassword = (encryptedPassword) => {
+    const bytes = CryptoJS.AES.decrypt(encryptedPassword, SECRET_KEY);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -25,32 +40,44 @@ function Login() {
       return;
     }
 
-    // المعلومات الصحيحة للدخول
+    // المعلومات الصحيحة للدخول مع تشفير كلمات المرور
     const validCredentials = [
-      { username: 'shtayer', password: 'Shtayer650' },
-      { username: 'مسؤول', password: '12345' }
+      { 
+        username: 'shtayer', 
+        password: encryptPassword('Shtayer650') 
+      },
+      { 
+        username: 'مسؤول', 
+        password: encryptPassword('12345') 
+      }
     ];
 
     // التحقق من صحة بيانات الاعتماد
     const isValidUser = validCredentials.some(
-      cred => cred.username === username && cred.password === password
+      cred => cred.username === username && 
+              decryptPassword(cred.password) === password
     );
 
     if (isValidUser) {
-      // توليد توكن مؤقت
-      const token = btoa(`${username}:${new Date().getTime()}`);
-      
-      // تخزين التوكن
+      // إنشاء رمز مميز مشفر
+      const token = CryptoJS.AES.encrypt(
+        `${username}:${new Date().getTime()}`, 
+        SECRET_KEY
+      ).toString();
+
+      // تخزين المعلومات بشكل آمن
       localStorage.setItem('token', token);
       localStorage.setItem('username', username);
 
+      // عرض رسالة نجاح
       toast.success('تم تسجيل الدخول بنجاح', {
         position: "top-right",
         autoClose: 2000,
         onClose: () => navigate('/admin/dashboard', { replace: true })
       });
     } else {
-      toast.error('بيانات الاعتماد غير صحيحة', {
+      // عرض رسالة خطأ
+      toast.error('اسم المستخدم أو كلمة المرور غير صحيحة', {
         position: "top-right",
         autoClose: 3000,
       });
@@ -58,8 +85,7 @@ function Login() {
   };
 
   const handleGoBack = () => {
-    // العودة للصفحة الرئيسية أو أي صفحة سابقة
-    window.history.back();
+    navigate('/', { replace: true });
   };
 
   return (

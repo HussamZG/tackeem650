@@ -7,8 +7,12 @@ import 'react-datepicker/dist/react-datepicker.css';
 import ar from 'date-fns/locale/ar-SA';
 import * as XLSX from 'xlsx';
 import { supabase } from '../supabaseClient';
+import CryptoJS from 'crypto-js';
 
 registerLocale('ar', ar);
+
+// مفتاح التشفير (يجب أن يكون نفس المفتاح المستخدم في تسجيل الدخول)
+const SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY || 'default-secret-key-650';
 
 function AdminDashboard() {
   const [startDate, setStartDate] = useState(null);
@@ -48,8 +52,8 @@ function AdminDashboard() {
     }
 
     try {
-      // فك التشفير للتحقق من صحة التوكن
-      const decodedToken = atob(token);
+      // فك تشفير التوكن
+      const decodedToken = CryptoJS.AES.decrypt(token, SECRET_KEY).toString(CryptoJS.enc.Utf8);
       const [storedUsername, timestamp] = decodedToken.split(':');
       
       // التحقق من اسم المستخدم
@@ -679,369 +683,146 @@ function AdminDashboard() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gray-900 text-gray-100">
+    <div dir="rtl" className="min-h-screen bg-gray-100 p-4 md:p-8 flex flex-col">
       <ToastContainer rtl={true} theme="dark" />
       
-      <div className="container mx-auto max-w-7xl px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-extrabold text-blue-300">لوحة التحكم الإدارية</h1>
-          <div className="flex items-center space-x-4 space-x-reverse">
-            <button 
-              onClick={exportToExcel}
-              className="bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-2 space-x-reverse"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <span>تصدير إلى إكسل</span>
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="bg-gray-700 text-gray-200 px-6 py-2 rounded-lg shadow-md hover:bg-gray-600 transition-colors flex items-center space-x-2 space-x-reverse border border-gray-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span>تسجيل الخروج</span>
-            </button>
-          </div>
+      {/* العنوان والأزرار الرئيسية - متجاوب */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">لوحة التحكم الإدارية</h1>
+        <div className="flex flex-wrap gap-2 md:gap-4 justify-center">
+          <button 
+            onClick={exportToExcel}
+            className="bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-colors text-sm md:text-base"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>تصدير إلى إكسل</span>
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="bg-gray-700 text-gray-200 px-6 py-2 rounded-lg shadow-md hover:bg-gray-600 transition-colors flex items-center space-x-2 space-x-reverse border border-gray-600"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>تسجيل الخروج</span>
+          </button>
         </div>
+      </div>
 
-        {/* قسم الفلاتر */}
-        <div className="bg-gray-800 rounded-2xl shadow-2xl p-6 mb-8 border border-gray-700">
-          <h2 className="text-2xl font-semibold text-blue-300 mb-6 border-b pb-3 border-gray-700 flex justify-between items-center">
-            <span>فلترة الحالات</span>
-            {/* زر مسح الفلاتر */}
-            {Object.values(filters).some(value => value !== '' && value !== 'date' && value !== 'desc') && (
-              <button 
-                onClick={() => setFilters({
-                  caseCode: '',
-                  dateFrom: '',
-                  dateTo: '',
-                  rescuerName: '',
-                  rescuerRank: '',
-                  trainer: '',
-                  sortBy: 'date',
-                  sortOrder: 'desc'
-                })}
-                className="text-red-400 hover:text-red-300 transition-colors flex items-center space-x-1 space-x-reverse"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span>مسح الفلاتر</span>
-              </button>
-            )}
-          </h2>
-          <div className="grid grid-cols-4 gap-6">
-            {/* فلتر رمز الحالة */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">كود الحالة</label>
-              <select 
-                name="caseCode"
-                value={filters.caseCode}
-                onChange={handleFilterChange}
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              >
-                <option value="">جميع الحالات</option>
-                <option value="أحمر">أحمر</option>
-                <option value="أصفر">أصفر</option>
-              </select>
-            </div>
-
-            {/* فلتر التاريخ من */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">من تاريخ</label>
-              <input 
-                type="date"
-                name="dateFrom"
-                value={filters.dateFrom}
-                onChange={handleFilterChange}
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              />
-            </div>
-
-            {/* فلتر التاريخ إلى */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">إلى تاريخ</label>
-              <input 
-                type="date"
-                name="dateTo"
-                value={filters.dateTo}
-                onChange={handleFilterChange}
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              />
-            </div>
-
-            {/* فلتر اسم المسعف */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">اسم المسعف</label>
-              <input 
-                type="text"
-                name="rescuerName"
-                value={filters.rescuerName}
-                onChange={handleFilterChange}
-                placeholder="ادخل اسم المسعف"
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              />
-            </div>
-
-            {/* فلتر رتبة المسعف */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">رتبة المسعف</label>
-              <select 
-                name="rescuerRank"
-                value={filters.rescuerRank}
-                onChange={handleFilterChange}
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              >
-                <option value="">جميع الرتب</option>
-                {uniqueRanks.map(rank => (
-                  <option key={rank} value={rank}>{rank}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* فلتر المدرب */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">المدرب</label>
-              <select 
-                name="trainer"
-                value={filters.trainer}
-                onChange={handleFilterChange}
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              >
-                <option value="">جميع المدربين</option>
-                {uniqueTrainers.map(trainer => (
-                  <option key={trainer} value={trainer}>{trainer}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* فلتر الترتيب */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">الترتيب حسب</label>
-              <select 
-                name="sortBy"
-                value={filters.sortBy}
-                onChange={handleFilterChange}
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              >
-                <option value="date">التاريخ</option>
-                <option value="rescuerName">اسم المسعف</option>
-              </select>
-            </div>
-
-            {/* فلتر اتجاه الترتيب */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-blue-300">اتجاه الترتيب</label>
-              <select 
-                name="sortOrder"
-                value={filters.sortOrder}
-                onChange={handleFilterChange}
-                className="w-full p-3 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-600 transition-all text-gray-100 bg-gray-700"
-              >
-                <option value="desc">تنازلي</option>
-                <option value="asc">تصاعدي</option>
-              </select>
-            </div>
-          </div>
+      {/* إحصائيات الحالات - متجاوب */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-lg shadow-md text-center">
+          <h3 className="text-lg font-semibold">إجمالي الحالات</h3>
+          <p className="text-2xl font-bold text-gray-700">{totalCasesCount}</p>
         </div>
-
-        {/* قسم الإحصائيات */}
-        <div className="grid grid-cols-3 gap-6 mb-8">
-          <div className="bg-gray-800 rounded-2xl shadow-xl p-6 text-center hover:shadow-2xl transition-shadow border border-gray-700">
-            <div className="flex justify-center items-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-blue-300 mb-2">إجمالي الحالات</h3>
-            <p className="text-3xl font-bold text-gray-100">{totalCasesCount}</p>
-          </div>
-          <div className="bg-gray-800 rounded-2xl shadow-xl p-6 text-center hover:shadow-2xl transition-shadow border border-gray-700">
-            <div className="flex justify-center items-center mb-4">
-              <span className="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center text-white text-2xl font-bold">!</span>
-            </div>
-            <h3 className="text-xl font-semibold text-amber-700 mb-2">حالات أصفر</h3>
-            <p className="text-3xl font-bold text-amber-900">{yellowCasesCount}</p>
-          </div>
-          <div className="bg-gray-800 rounded-2xl shadow-xl p-6 text-center hover:shadow-2xl transition-shadow border border-gray-700">
-            <div className="flex justify-center items-center mb-4">
-              <span className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center text-white text-2xl font-bold">!</span>
-            </div>
-            <h3 className="text-xl font-semibold text-red-700 mb-2">حالات أحمر</h3>
-            <p className="text-3xl font-bold text-red-900">{redCasesCount}</p>
-          </div>
+        <div className="bg-white p-4 rounded-lg shadow-md text-center">
+          <h3 className="text-lg font-semibold text-red-600">حالات أحمر</h3>
+          <p className="text-2xl font-bold text-red-700">{redCasesCount}</p>
         </div>
+        <div className="bg-white p-4 rounded-lg shadow-md text-center">
+          <h3 className="text-lg font-semibold text-yellow-600">حالات أصفر</h3>
+          <p className="text-2xl font-bold text-yellow-700">{yellowCasesCount}</p>
+        </div>
+      </div>
 
-        {/* جدول الحالات */}
-        <div className="bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700">
-          <div className="p-6 flex justify-between items-center border-b border-gray-700">
-            <h2 className="text-2xl font-semibold text-blue-300">تفاصيل الحالات</h2>
-            <div className="text-blue-400 font-medium">
-              عدد النتائج: {filteredCases.length} حالة
-            </div>
-            <div className="flex items-center space-x-2 space-x-reverse">
-              <button 
-                onClick={handleDeleteCases}
-                className="bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-red-600 transition-colors flex items-center space-x-2 space-x-reverse"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span>حذف المحدد</span>
-              </button>
-              <button 
-                onClick={handleSelectAll}
-                className="bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-2 space-x-reverse"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{selectAll ? 'إلغاء التحديد' : 'تحديد الكل'}</span>
-              </button>
-            </div>
+      {/* منطقة الفلترة - متجاوبة */}
+      <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <input 
+            type="text" 
+            placeholder="رمز الحالة" 
+            value={filters.caseCode}
+            onChange={(e) => handleFilterChange('caseCode', e.target.value)}
+            className="w-full p-2 border rounded-lg"
+          />
+          <DatePicker
+            locale="ar"
+            selected={startDate}
+            onChange={(date) => setStartDate(date)}
+            placeholderText="من تاريخ"
+            className="w-full p-2 border rounded-lg"
+          />
+          <DatePicker
+            locale="ar"
+            selected={endDate}
+            onChange={(date) => setEndDate(date)}
+            placeholderText="إلى تاريخ"
+            className="w-full p-2 border rounded-lg"
+          />
+        </div>
+      </div>
+
+      {/* جدول الحالات - متجاوب */}
+      <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+        {loading ? (
+          <div className="text-center p-6">
+            <p>جارٍ التحميل...</p>
           </div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-right">
-              <thead className="bg-gray-700 border-b border-gray-600">
+              <thead className="bg-gray-100 border-b">
                 <tr>
-                  <th className="p-4 text-sm font-medium text-blue-300">
+                  <th className="p-3 text-sm font-semibold tracking-wide hidden md:table-cell">
                     <input 
-                      type="checkbox"
+                      type="checkbox" 
                       checked={selectAll}
-                      onChange={handleSelectAll}
-                      className="mr-2"
+                      onChange={() => handleSelectAll()}
+                      className="form-checkbox"
                     />
                   </th>
-                  <th className="p-4 text-sm font-medium text-blue-300">معرف الحالة</th>
-                  {['اسم المسعف', 'رتبة المسعف', 'المدرب', 'كود الحالة', 'التاريخ', 'التفاصيل'].map((header) => (
-                    <th key={header} className="p-4 text-sm font-medium text-blue-300">{header}</th>
-                  ))}
+                  <th className="p-3 text-sm font-semibold tracking-wide">رمز الحالة</th>
+                  <th className="p-3 text-sm font-semibold tracking-wide hidden md:table-cell">اسم المسعف</th>
+                  <th className="p-3 text-sm font-semibold tracking-wide hidden lg:table-cell">التاريخ</th>
+                  <th className="p-3 text-sm font-semibold tracking-wide">الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCases.map((c) => {
-                  const caseCodeColor = getCaseColor(c.case_code);
-                  const uniqueKey = `${c.date}_${c.rescuerName}_${c.case_code}`;
-                  return (
-                    <tr 
-                      key={c.id} 
-                      className={`${
-                        selectedCases.includes(c.case_unique_id) 
-                          ? 'bg-blue-100 dark:bg-blue-800' 
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                      } transition-colors duration-200`}
-                    >
-                      <td className="p-4">
-                        <input 
-                          type="checkbox"
-                          checked={selectedCases.includes(c.case_unique_id)}
-                          onChange={() => toggleCaseSelection(c)}
-                          className="mr-2"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{c.case_unique_id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{c.rescuerName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{c.rescuerRank}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{c.trainer}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span 
-                          className={`px-3 py-1 rounded-full text-xs font-bold 
-                            ${caseCodeColor} bg-gray-200
-                            text-gray-800 dark:text-gray-100 dark:bg-gray-700`}
-                        >
-                          {convertCaseCodeToArabic(c.case_code)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {c.date ? new Date(c.date).toLocaleDateString('en-GB', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric'
-                        }) : 'غير محدد'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                {filteredCases.map((emergencyCase, index) => (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    <td className="p-3 hidden md:table-cell">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedCases.includes(emergencyCase.id)}
+                        onChange={() => handleCaseSelection(emergencyCase.id)}
+                        className="form-checkbox"
+                      />
+                    </td>
+                    <td className="p-3 text-sm">{emergencyCase.caseCode}</td>
+                    <td className="p-3 text-sm hidden md:table-cell">{emergencyCase.rescuerName}</td>
+                    <td className="p-3 text-sm hidden lg:table-cell">{emergencyCase.date}</td>
+                    <td className="p-3 text-sm">
+                      <div className="flex space-x-2 reverse-space-x">
                         <button 
-                          className="text-blue-400 hover:text-blue-300 hover:underline transition-colors"
-                          onClick={() => handleCaseDetails(c)}
+                          onClick={() => viewCaseDetails(emergencyCase)}
+                          className="bg-blue-500 text-white px-2 py-1 rounded-lg text-xs hover:bg-blue-600"
                         >
-                          عرض التفاصيل
+                          عرض
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        <button 
+                          onClick={() => editCase(emergencyCase)}
+                          className="bg-green-500 text-white px-2 py-1 rounded-lg text-xs hover:bg-green-600"
+                        >
+                          تعديل
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* نافذة تفاصيل الحالة */}
-        {selectedCase && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="bg-gray-800 rounded-2xl shadow-2xl w-3/4 max-w-4xl p-8 relative border border-gray-700">
-              <button 
-                onClick={() => setSelectedCase(null)}
-                className="absolute top-4 left-4 text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              <h2 className="text-3xl font-bold text-blue-300 mb-6 border-b border-gray-700 pb-4">تفاصيل الحالة</h2>
-              
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-blue-300 font-bold mb-2">معرف الحالة</label>
-                    <p className="bg-gray-700 p-3 rounded text-gray-100">{selectedCase.case_unique_id}</p>
-                  </div>
-                  <div>
-                    <label className="block text-blue-300 font-bold mb-2">اسم المسعف</label>
-                    <p className="bg-gray-700 p-3 rounded text-gray-100">{selectedCase.rescuerName}</p>
-                  </div>
-                  <div>
-                    <label className="block text-blue-300 font-bold mb-2">رتبة المسعف</label>
-                    <p className="bg-gray-700 p-3 rounded text-gray-100">{selectedCase.rescuerRank}</p>
-                  </div>
-                  <div>
-                    <label className="block text-blue-300 font-bold mb-2">المدرب</label>
-                    <p className="bg-gray-700 p-3 rounded text-gray-100">{selectedCase.trainer}</p>
-                  </div>
-                  <div>
-                    <label className="block text-blue-300 font-bold mb-2">كود الحالة</label>
-                    <p className={`px-3 py-1 rounded font-bold
-                      ${getCaseColor(selectedCase.caseCode)} bg-gray-200
-                    `}>
-                      {selectedCase.caseCode}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-blue-300 font-bold mb-2">التاريخ</label>
-                  <p className="bg-gray-700 p-3 rounded text-gray-100">
-                    {selectedCase.date ? new Date(selectedCase.date).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric'
-                    }) : 'غير محدد'}
-                  </p>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-blue-300 font-bold mb-2">تفاصيل الحالة</label>
-                  <p className="bg-gray-700 p-3 rounded min-h-[100px] text-gray-100">
-                    {selectedCase.caseDetails}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
         )}
       </div>
+
+      {/* نص عند عدم وجود بيانات */}
+      {!loading && filteredCases.length === 0 && (
+        <div className="text-center p-6 bg-white rounded-lg shadow-md">
+          <p>لا توجد حالات للعرض</p>
+        </div>
+      )}
     </div>
   );
 }
