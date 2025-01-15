@@ -20,6 +20,7 @@ function EmergencyForm() {
     caseCode: '',
     caseDetails: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const rescuerRanks = ['قائد', 'كشاف', 'مسعف'];
   
@@ -74,6 +75,8 @@ function EmergencyForm() {
       return;
     }
 
+    setIsLoading(true);
+
     try {
       // إعداد بيانات الحالة للإرسال
       const caseData = {
@@ -105,6 +108,7 @@ function EmergencyForm() {
           position: "top-right",
           autoClose: 3000
         });
+        setIsLoading(false);
         return;
       }
 
@@ -124,12 +128,15 @@ function EmergencyForm() {
         caseDetails: ''
       });
 
+      setIsLoading(false);
+
     } catch (err) {
       console.error('خطأ غير متوقع:', err);
       toast.error('حدث خطأ أثناء حفظ الحالة', {
         position: "top-right",
         autoClose: 3000
       });
+      setIsLoading(false);
     }
   };
 
@@ -144,6 +151,12 @@ function EmergencyForm() {
           textAlign: 'right'
         }}
       />
+      
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+        </div>
+      )}
       
       <div className="max-w-2xl w-full bg-gray-800 shadow-2xl rounded-2xl overflow-hidden border border-gray-700">
         <div className="bg-blue-800 text-white py-6 px-8 border-b border-gray-700">
@@ -257,9 +270,10 @@ function EmergencyForm() {
           <div className="text-center">
             <button 
               type="submit"
-              className="bg-blue-700 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading}
+              className={`bg-blue-700 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'cursor-not-allowed' : ''}`}
             >
-              حفظ الحالة
+              {isLoading ? 'جاري الحفظ...' : 'حفظ الحالة'}
             </button>
           </div>
         </form>
