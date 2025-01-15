@@ -18,7 +18,8 @@ function EmergencyForm() {
     trainer: '',
     date: null,
     caseCode: '',
-    caseDetails: ''
+    caseDetails: '',
+    firstAidEvaluation: '' // إضافة حقل تقييم الإسعاف
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -87,6 +88,7 @@ function EmergencyForm() {
         date: formData.date ? formData.date.toISOString().split('T')[0] : null,
         case_code: formData.caseCode,  
         case_details: formData.caseDetails,  
+        first_aid_evaluation: formData.firstAidEvaluation, // إضافة تقييم الإسعاف
         created_at: new Date().toISOString()
       };
 
@@ -125,7 +127,8 @@ function EmergencyForm() {
         trainer: '',
         date: null,
         caseCode: '',
-        caseDetails: ''
+        caseDetails: '',
+        firstAidEvaluation: ''
       });
 
       setIsLoading(false);
@@ -170,7 +173,7 @@ function EmergencyForm() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
             </button>
-            <h2 className="text-3xl font-bold text-right text-blue-300">نموذج حالة طارئة</h2>
+            <h2 className="text-3xl font-bold text-right text-blue-300">FA-650 First Aid Evaluation</h2>
           </div>
         </div>
         
@@ -264,6 +267,17 @@ function EmergencyForm() {
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-700 rounded-lg text-right bg-gray-700 text-gray-100 h-32 focus:outline-none focus:ring-2 focus:ring-blue-600"
               placeholder="أدخل تفاصيل الحالة"
+            ></textarea>
+          </div>
+
+          <div>
+            <label className="block text-right mb-2 text-blue-300">تقييم الإسعاف</label>
+            <textarea
+              name="firstAidEvaluation"
+              value={formData.firstAidEvaluation}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-700 rounded-lg text-right bg-gray-700 text-gray-100 h-32 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="أدخل تقييم الإسعاف"
             ></textarea>
           </div>
 
