@@ -127,6 +127,7 @@ function AdminDashboard() {
 
         setEmergencyCases(processedData || []);
         setFilteredCases(processedData || []);
+
       } catch (err) {
         console.error('خطأ في جلب الحالات:', err);
         toast.error('تعذر جلب الحالات', {
@@ -608,6 +609,57 @@ function AdminDashboard() {
       return false;
     }
   };
+  // دالة تحديث الحالات
+  const refreshCases = async () => {
+    setIsLoading(true);
+    try {
+      // جلب الحالات مع التركيز على الحالات الجديدة
+      const { data, error } = await supabase
+        .from('emergencyCases')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // معالجة البيانات للتأكد من وجود أسماء المسعفين ورتبهم
+      const processedData = data.map(item => ({
+        ...item,
+        rescuerName: item.rescuerName || item.rescuer_name || 'غير محدد',
+        rescuerRank: item.rescuerRank || item.rescuer_rank || 'غير محدد',
+        caseCode: item.caseCode || item.case_code || 'غير محدد'
+      }));
+
+      // تحديث الحالات
+      setEmergencyCases(processedData || []);
+      setFilteredCases(processedData || []);
+
+      // عد الحالات الجديدة
+      const newCasesCount = processedData ? processedData.length : 0;
+      
+      // إشعار بعدد الحالات الجديدة
+      toast.info(`تم تحديث ${newCasesCount} حالة`, {
+        position: "top-right",
+        autoClose: 3000
+      });
+
+      // تحديث العدادات
+      const redCases = processedData.filter(cas => cas.caseCode === 'red').length;
+      const yellowCases = processedData.filter(cas => cas.caseCode === 'yellow').length;
+      
+      setRedCasesCount(redCases);
+      setYellowCasesCount(yellowCases);
+      setTotalCasesCount(processedData.length);
+
+    } catch (err) {
+      console.error('خطأ في تحديث الحالات:', err);
+      toast.error('تعذر تحديث الحالات', {
+        position: "top-right",
+        autoClose: 3000
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
       <div dir="rtl" className="min-h-screen bg-gray-900 text-gray-100">
         <ToastContainer rtl={true} theme="dark" />
@@ -637,6 +689,15 @@ function AdminDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 <span>تسجيل الخروج</span>
+              </button>
+              <button
+                  onClick={refreshCases}
+                  className="bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-2 space-x-reverse"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15m-9-5a8.001 8.001 0 0015.356 2m.644-8.438V5.5a2.5 2.5 0 00-2.5-2.5h-2a2.5 2.5 0 00-2.5 2.5v1.938a8.001 8.001 0 00-4.435 5.014l-1.444.81a2.5 2.5 0 00-1.121 3.374l1.5 2.598a2.5 2.5 0 003.374 1.121l1.444-.81a8.001 8.001 0 005.014-4.435h1.938a2.5 2.5 0 002.5-2.5v-2a2.5 2.5 0 00-2.5-2.5h-1.938a8.001 8.001 0 00-4.435-5.014z" />
+                </svg>
+                <span>تحديث الحالات</span>
               </button>
             </div>
           </div>
