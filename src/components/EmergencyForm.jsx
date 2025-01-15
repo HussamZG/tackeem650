@@ -18,8 +18,7 @@ function EmergencyForm() {
     trainer: '',
     date: null,
     caseCode: '',
-    caseDetails: '',
-    firstAidEvaluation: '' // إضافة حقل تقييم الإسعاف
+    caseDetails: ''
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -88,7 +87,6 @@ function EmergencyForm() {
         date: formData.date ? formData.date.toISOString().split('T')[0] : null,
         case_code: formData.caseCode,  
         case_details: formData.caseDetails,  
-        first_aid_evaluation: formData.firstAidEvaluation, // إضافة تقييم الإسعاف
         created_at: new Date().toISOString()
       };
 
@@ -127,8 +125,7 @@ function EmergencyForm() {
         trainer: '',
         date: null,
         caseCode: '',
-        caseDetails: '',
-        firstAidEvaluation: ''
+        caseDetails: ''
       });
 
       setIsLoading(false);
@@ -267,17 +264,6 @@ function EmergencyForm() {
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-700 rounded-lg text-right bg-gray-700 text-gray-100 h-32 focus:outline-none focus:ring-2 focus:ring-blue-600"
               placeholder="أدخل تفاصيل الحالة"
-            ></textarea>
-          </div>
-
-          <div>
-            <label className="block text-right mb-2 text-blue-300">تقييم الإسعاف</label>
-            <textarea
-              name="firstAidEvaluation"
-              value={formData.firstAidEvaluation}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-700 rounded-lg text-right bg-gray-700 text-gray-100 h-32 focus:outline-none focus:ring-2 focus:ring-blue-600"
-              placeholder="أدخل تقييم الإسعاف"
             ></textarea>
           </div>
 
