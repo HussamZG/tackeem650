@@ -36,6 +36,7 @@ function AdminDashboard() {
   const [totalCasesCount, setTotalCasesCount] = useState(0);
   const [redCasesCount, setRedCasesCount] = useState(0);
   const [yellowCasesCount, setYellowCasesCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   // رابط واجهة برمجة التطبيقات
   const apiUrl = 'https://your-backend-api.com/api'; // استبدل برابط API الفعلي
@@ -94,7 +95,7 @@ function AdminDashboard() {
   useEffect(() => {
     // دالة جلب الحالات
     const fetchEmergencyCases = async () => {
-      setLoading(true);
+      setIsLoading(true);
       try {
         // جلب جميع البيانات مع التأكيد على استرداد اسم المسعف ورتبته
         const { data, error } = await supabase
@@ -104,19 +105,18 @@ function AdminDashboard() {
         // طباعة نتائج جلب البيانات للتشخيص
         console.log('جميع نتائج الحالات:', {
           عدد_الحالات: data ? data.length : 0,
-          أمثلة_البيانات: data ? data.slice(0, 3).map(item => ({
-            rescuerName: item.rescuerName,
-            rescuer_name: item.rescuer_name,
-            rescuerRank: item.rescuerRank,
-            rescuer_rank: item.rescuer_rank,
-            caseCode: item.caseCode,
-            case_code: item.case_code
+          الحالات: data ? data.map(item => ({
+            اسم_المسعف: item.rescuerName || item.rescuer_name,
+            رتبة_المسعف: item.rescuerRank || item.rescuer_rank,
+            كود_الحالة: item.caseCode || item.case_code
           })) : [],
           الخطأ: error
         });
+
         if (error) {
           throw error;
         }
+
         // تحديث الحالات مع التأكد من وجود الأعمدة
         const processedData = data.map(item => ({
           ...item,
@@ -124,14 +124,17 @@ function AdminDashboard() {
           rescuerRank: item.rescuerRank || item.rescuer_rank,
           caseCode: item.caseCode || item.case_code
         }));
+
         setEmergencyCases(processedData || []);
         setFilteredCases(processedData || []);
-        setLoading(false);
       } catch (err) {
-        console.error('خطأ في جلب جميع الحالات:', err);
-        toast.error('تعذر جلب البيانات. يرجى المحاولة لاحقًا.');
-        setError(err);
-        setLoading(false);
+        console.error('خطأ في جلب الحالات:', err);
+        toast.error('تعذر جلب الحالات', {
+          position: "top-right",
+          autoClose: 3000
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
     // دالة تهيئة لوحة التحكم
@@ -260,49 +263,52 @@ function AdminDashboard() {
     }
   };
   // دالة حذف الحالات المحددة
-  const handleDeleteCases = async () => {
+  const deleteSelectedCases = async () => {
+    if (selectedCases.length === 0) {
+      toast.warning('لم يتم تحديد أي حالات للحذف', {
+        position: "top-right",
+        autoClose: 3000
+      });
+      return;
+    }
+
+    const confirmDelete = window.confirm(`هل أنت متأكد من حذف ${selectedCases.length} حالة؟`);
+    if (!confirmDelete) return;
+
+    setIsLoading(true);
     try {
-      // التأكد من وجود حالات محددة للحذف
-      if (selectedCases.length === 0) {
-        toast.error('لم يتم تحديد أي حالة للحذف');
-        return;
-      }
-      // طلب تأكيد من المستخدم
-      const confirmDelete = window.confirm(`هل أنت متأكد من حذف ${selectedCases.length} حالة؟`);
-      if (!confirmDelete) {
-        return;
-      }
-      // حذف الحالات باستخدام المعرف الفريد
-      const { data, error } = await supabase
-          .from('emergencyCases')
-          .delete()
-          .in('case_unique_id', selectedCases);
-      if (error) {
-        console.error('خطأ في حذف الحالات:', error);
-        toast.error(`حدث خطأ أثناء حذف الحالات: ${error.message}`);
-        return;
-      }
-      // إعادة جلب الحالات من قاعدة البيانات بعد الحذف
-      const { data: updatedCases, error: fetchError } = await supabase
-          .from('emergencyCases')
-          .select('*')
-          .order('date', { ascending: false });
-      if (fetchError) {
-        console.error('خطأ في جلب الحالات:', fetchError);
-        toast.error('تعذر تحديث قائمة الحالات');
-        return;
-      }
-      // تحديث حالة الحالات
-      setEmergencyCases(updatedCases || []);
-      setFilteredCases(updatedCases || []);
+      // حذف الحالات المحددة
+      const { error } = await supabase
+        .from('emergencyCases')
+        .delete()
+        .in('case_unique_id', selectedCases);
+
+      if (error) throw error;
+
+      // تحديث القائمة بعد الحذف
+      setEmergencyCases(prevCases => 
+        prevCases.filter(cas => !selectedCases.includes(cas.case_unique_id))
+      );
+      setFilteredCases(prevCases => 
+        prevCases.filter(cas => !selectedCases.includes(cas.case_unique_id))
+      );
+
       // إعادة تعيين الحالات المحددة
       setSelectedCases([]);
       setSelectAll(false);
-      // رسالة نجاح
-      toast.success(`تم حذف ${selectedCases.length} حالة بنجاح`);
+
+      toast.success(`تم حذف ${selectedCases.length} حالة بنجاح`, {
+        position: "top-right",
+        autoClose: 3000
+      });
     } catch (err) {
-      console.error('خطأ غير متوقع في حذف الحالات:', err);
-      toast.error('حدث خطأ غير متوقع أثناء حذف الحالات');
+      console.error('خطأ في حذف الحالات:', err);
+      toast.error('تعذر حذف الحالات', {
+        position: "top-right",
+        autoClose: 3000
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
   // دالة للتحقق من رمز الحالة
@@ -393,6 +399,7 @@ function AdminDashboard() {
     });
   };
   const handleCaseDetails = async (c) => {
+    setIsLoading(true);
     try {
       console.log('محاولة جلب تفاصيل الحالة:', {
         date: c.date,
@@ -427,6 +434,8 @@ function AdminDashboard() {
     } catch (err) {
       console.error('خطأ غير متوقع:', err);
       toast.error('حدث خطأ أثناء جلب تفاصيل الحالة');
+    } finally {
+      setIsLoading(false);
     }
   };
   const closeCaseDetails = () => {
@@ -602,7 +611,11 @@ function AdminDashboard() {
   return (
       <div dir="rtl" className="min-h-screen bg-gray-900 text-gray-100">
         <ToastContainer rtl={true} theme="dark" />
-
+        {isLoading && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+          </div>
+        )}
         <div className="container mx-auto max-w-7xl px-4 py-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-4xl font-extrabold text-blue-300">لوحة التحكم الإدارية</h1>
@@ -795,7 +808,7 @@ function AdminDashboard() {
               </div>
               <div className="flex items-center space-x-2 space-x-reverse">
                 <button
-                    onClick={handleDeleteCases}
+                    onClick={deleteSelectedCases}
                     className="bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-red-600 transition-colors flex items-center space-x-2 space-x-reverse"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -875,10 +888,11 @@ function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
-                              className="text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                              disabled={isLoading}
                               onClick={() => handleCaseDetails(c)}
+                              className={`bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            عرض التفاصيل
+                            {isLoading ? 'جاري التحميل...' : 'عرض التفاصيل'}
                           </button>
                         </td>
                       </tr>
