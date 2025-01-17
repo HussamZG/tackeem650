@@ -80,47 +80,38 @@ function EmergencyForm() {
     setIsLoading(true);
 
     try {
+      // معالجة التاريخ بشكل صحيح
+      const formattedDate = formData.date ? new Date(formData.date.setHours(0, 0, 0, 0)).toISOString() : null;
+
       // إعداد بيانات الحالة للإرسال
       const caseData = {
-        case_unique_id: uuidv4(), // إضافة معرف فريد
+        case_unique_id: uuidv4(),
         rescuer_name: formData.rescuerName,
         rescuer_rank: formData.rescuerRank,
         trainer: formData.trainer,
-        date: formData.date ? formData.date.toISOString().split('T')[0] : null,
-        case_code: formData.caseCode,  
-        case_details: formData.caseDetails,  
+        date: formattedDate,
+        case_code: formData.caseCode,
+        case_details: formData.caseDetails,
         created_at: new Date().toISOString()
       };
 
-      // طباعة البيانات للتشخيص
       console.log('بيانات الحالة للإرسال:', caseData);
 
-      // إرسال البيانات إلى Supabase
       const { data, error } = await supabase
         .from('emergencyCases')
         .insert(caseData)
         .select();
 
-      // طباعة نتيجة الإرسال
-      console.log('نتيجة الإرسال:', { data, error });
-
       if (error) {
-        console.error('خطأ في إضافة الحالة:', error);
-        toast.error(`فشل حفظ الحالة: ${error.message}`, {
-          position: "top-right",
-          autoClose: 3000
-        });
-        setIsLoading(false);
-        return;
+        throw error;
       }
 
-      // رسالة نجاح
       toast.success('تم حفظ الحالة بنجاح', {
         position: "top-right",
         autoClose: 2000
       });
 
-      // إعادة تعيير النموذج
+      // إعادة تعيين النموذج
       setFormData({
         rescuerName: '',
         rescuerRank: '',
@@ -130,14 +121,13 @@ function EmergencyForm() {
         caseDetails: ''
       });
 
-      setIsLoading(false);
-
     } catch (err) {
       console.error('خطأ غير متوقع:', err);
       toast.error('حدث خطأ أثناء حفظ الحالة', {
         position: "top-right",
         autoClose: 3000
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -228,13 +218,16 @@ function EmergencyForm() {
                 selected={formData.date}
                 onChange={handleDateChange}
                 locale="ar"
-                dateFormat="yyyy-MM-dd"
+                dateFormat="yyyy/MM/dd"
                 placeholderText="اختر التاريخ"
                 className="w-full px-4 py-3 border border-gray-700 rounded-lg text-right bg-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
                 calendarClassName="custom-calendar"
                 wrapperClassName="w-full"
                 popperClassName="custom-popper"
                 popperPlacement="bottom-end"
+                showYearDropdown
+                yearDropdownItemNumber={10}
+                scrollableYearDropdown
               />
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
