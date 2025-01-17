@@ -37,6 +37,8 @@ function AdminDashboard() {
   const [redCasesCount, setRedCasesCount] = useState(0);
   const [yellowCasesCount, setYellowCasesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [casesToDelete, setCasesToDelete] = useState([]);
   const navigate = useNavigate();
   // رابط واجهة برمجة التطبيقات
   const apiUrl = 'https://your-backend-api.com/api'; // استبدل برابط API الفعلي
@@ -266,50 +268,42 @@ function AdminDashboard() {
   // دالة حذف الحالات المحددة
   const deleteSelectedCases = async () => {
     if (selectedCases.length === 0) {
-      toast.warning('لم يتم تحديد أي حالات للحذف', {
-        position: "top-right",
-        autoClose: 3000
-      });
+      toast.warning('لم يتم تحديد أي حالات للحذف');
       return;
     }
-
-    const confirmDelete = window.confirm(`هل أنت متأكد من حذف ${selectedCases.length} حالة؟`);
-    if (!confirmDelete) return;
-
+    // عرض نافذة التأكيد
+    setShowDeleteConfirm(true);
+    setCasesToDelete(selectedCases);
+  };
+  // دالة تنفيذ الحذف
+  const confirmDelete = async () => {
     setIsLoading(true);
     try {
-      // حذف الحالات المحددة
       const { error } = await supabase
         .from('emergencyCases')
         .delete()
-        .in('case_unique_id', selectedCases);
+        .in('case_unique_id', casesToDelete);
 
       if (error) throw error;
 
       // تحديث القائمة بعد الحذف
       setEmergencyCases(prevCases => 
-        prevCases.filter(cas => !selectedCases.includes(cas.case_unique_id))
+        prevCases.filter(cas => !casesToDelete.includes(cas.case_unique_id))
       );
       setFilteredCases(prevCases => 
-        prevCases.filter(cas => !selectedCases.includes(cas.case_unique_id))
+        prevCases.filter(cas => !casesToDelete.includes(cas.case_unique_id))
       );
-
-      // إعادة تعيين الحالات المحددة
       setSelectedCases([]);
       setSelectAll(false);
-
-      toast.success(`تم حذف ${selectedCases.length} حالة بنجاح`, {
-        position: "top-right",
-        autoClose: 3000
-      });
+      
+      toast.success(`تم حذف ${casesToDelete.length} حالة بنجاح`);
     } catch (err) {
       console.error('خطأ في حذف الحالات:', err);
-      toast.error('تعذر حذف الحالات', {
-        position: "top-right",
-        autoClose: 3000
-      });
+      toast.error('حدث خطأ أثناء حذف الحالات');
     } finally {
       setIsLoading(false);
+      setShowDeleteConfirm(false);
+      setCasesToDelete([]);
     }
   };
   // دالة للتحقق من رمز الحالة
@@ -1014,6 +1008,53 @@ function AdminDashboard() {
                       <p className="bg-gray-700 p-3 rounded min-h-[100px] text-gray-100">
                         {selectedCase.caseDetails}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+          )}
+          {showDeleteConfirm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
+                  <div className="text-center">
+                    <svg 
+                      className="mx-auto mb-4 text-red-500 w-12 h-12" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth="2" 
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                    <h3 className="mb-5 text-lg font-medium text-gray-100">
+                      هل أنت متأكد من حذف {casesToDelete.length} حالة؟
+                    </h3>
+                    <p className="text-gray-400 mb-5">
+                      لا يمكن التراجع عن هذا الإجراء بعد تنفيذه
+                    </p>
+                    <div className="flex justify-center space-x-4 space-x-reverse">
+                      <button
+                        onClick={confirmDelete}
+                        disabled={isLoading}
+                        className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors
+                          ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {isLoading ? 'جاري الحذف...' : 'نعم، احذف'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setCasesToDelete([]);
+                        }}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        إلغاء
+                      </button>
                     </div>
                   </div>
                 </div>
