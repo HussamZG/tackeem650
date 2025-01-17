@@ -400,43 +400,29 @@ function AdminDashboard() {
     });
   };
   const handleCaseDetails = async (c) => {
-    setIsLoading(true);
     try {
-      console.log('محاولة جلب تفاصيل الحالة:', {
-        date: c.date,
-        rescuerName: c.rescuerName || c.rescuer_name,
-        caseCode: c.caseCode || c.case_code
-      });
-      // جلب التفاصيل الكاملة للحالة من قاعدة البيانات
       const { data, error } = await supabase
-          .from('emergencyCases')
-          .select('*')
-          .eq('date', c.date)
-          .eq('rescuer_name', c.rescuerName || c.rescuer_name)
-          .single();
-      if (error) {
-        console.error('خطأ في جلب تفاصيل الحالة:', error);
-        toast.error('تعذر جلب تفاصيل الحالة');
-        return;
-      }
-      console.log('تفاصيل الحالة المستردة:', data);
-      // تحديث الحالة المحددة مع التأكد من وجود جميع الأعمدة
+        .from('emergencyCases')
+        .select('*')
+        .eq('case_unique_id', c.case_unique_id)
+        .single();
+
+      if (error) throw error;
+
+      // تحويل البيانات إلى التنسيق المطلوب
       setSelectedCase({
-        id: data.id,
-        rescuerName: data.rescuer_name || 'غير محدد',
-        rescuerRank: data.rescuer_rank || 'غير محدد',
-        caseCode: data.case_code || 'غير محدد',
-        trainer: data.trainer || 'غير محدد',
-        date: data.date || 'غير محدد',
-        caseDetails: data.case_details || 'لا توجد تفاصيل إضافية',
-        additionalNotes: data.additional_notes || 'لا توجد ملاحظات',
-        case_unique_id: data.case_unique_id
+        case_unique_id: data.case_unique_id,
+        rescuerName: data.rescuer_name,
+        rescuerRank: data.rescuer_rank,
+        trainer: data.trainer,
+        date: data.date,
+        caseCode: data.case_code,
+        caseDetails: data.case_details,
+        created_at: data.created_at
       });
     } catch (err) {
-      console.error('خطأ غير متوقع:', err);
-      toast.error('حدث خطأ أثناء جلب تفاصيل الحالة');
-    } finally {
-      setIsLoading(false);
+      console.error('خطأ في جلب تفاصيل الحالة:', err);
+      toast.error('تعذر جلب تفاصيل الحالة');
     }
   };
   const closeCaseDetails = () => {
@@ -609,11 +595,10 @@ function AdminDashboard() {
       return false;
     }
   };
-  // دالة تحديث الحالات
+  // تحديث دالة refreshCases
   const refreshCases = async () => {
     setIsLoading(true);
     try {
-      // جلب الحالات مع التركيز على الحالات الجديدة
       const { data, error } = await supabase
         .from('emergencyCases')
         .select('*')
@@ -621,27 +606,20 @@ function AdminDashboard() {
 
       if (error) throw error;
 
-      // معالجة البيانات للتأكد من وجود أسماء المسعفين ورتبهم
       const processedData = data.map(item => ({
-        ...item,
-        rescuerName: item.rescuerName || item.rescuer_name || 'غير محدد',
-        rescuerRank: item.rescuerRank || item.rescuer_rank || 'غير محدد',
-        caseCode: item.caseCode || item.case_code || 'غير محدد'
+        case_unique_id: item.case_unique_id,
+        rescuerName: item.rescuer_name,
+        rescuerRank: item.rescuer_rank,
+        trainer: item.trainer,
+        date: item.date,
+        caseCode: item.case_code,
+        caseDetails: item.case_details,
+        created_at: item.created_at
       }));
 
-      // تحديث الحالات
-      setEmergencyCases(processedData || []);
-      setFilteredCases(processedData || []);
-
-      // عد الحالات الجديدة
-      const newCasesCount = processedData ? processedData.length : 0;
+      setEmergencyCases(processedData);
+      setFilteredCases(processedData);
       
-      // إشعار بعدد الحالات الجديدة
-      toast.info(`تم تحديث ${newCasesCount} حالة`, {
-        position: "top-right",
-        autoClose: 3000
-      });
-
       // تحديث العدادات
       const redCases = processedData.filter(cas => cas.caseCode === 'red').length;
       const yellowCases = processedData.filter(cas => cas.caseCode === 'yellow').length;
@@ -652,10 +630,7 @@ function AdminDashboard() {
 
     } catch (err) {
       console.error('خطأ في تحديث الحالات:', err);
-      toast.error('تعذر تحديث الحالات', {
-        position: "top-right",
-        autoClose: 3000
-      });
+      toast.error('تعذر تحديث الحالات');
     } finally {
       setIsLoading(false);
     }
@@ -663,11 +638,28 @@ function AdminDashboard() {
   return (
       <div dir="rtl" className="min-h-screen bg-gray-900 text-gray-100">
         <ToastContainer rtl={true} theme="dark" />
+        
+        {/* مؤشر التحميل */}
         {isLoading && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-500">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24">
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              </div>
+            </div>
+            <span className="ml-2 text-lg text-blue-500">جاري التحميل...</span>
           </div>
         )}
+
         <div className="container mx-auto max-w-7xl px-4 py-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-4xl font-extrabold text-blue-300">لوحة التحكم الإدارية</h1>
@@ -884,7 +876,7 @@ function AdminDashboard() {
                     className="bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 transition-colors flex items-center space-x-2 space-x-reverse"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
                   <span>{selectAll ? 'إلغاء التحديد' : 'تحديد الكل'}</span>
                 </button>
@@ -910,11 +902,11 @@ function AdminDashboard() {
                 </thead>
                 <tbody>
                 {filteredCases.map((c) => {
-                  const caseCodeColor = getCaseColor(c.case_code);
-                  const uniqueKey = `${c.date}_${c.rescuerName}_${c.case_code}`;
+                  const caseCodeColor = getCaseColor(c.caseCode);
+                  const uniqueKey = `${c.date}_${c.rescuerName}_${c.caseCode}`;
                   return (
                       <tr
-                          key={c.id}
+                          key={c.case_unique_id}
                           className={`${
                               selectedCases.includes(c.case_unique_id)
                                   ? 'bg-blue-100 dark:bg-blue-800'
@@ -939,7 +931,7 @@ function AdminDashboard() {
                             ${caseCodeColor} bg-gray-200
                             text-gray-800 dark:text-gray-100 dark:bg-gray-700`}
                         >
-                          {convertCaseCodeToArabic(c.case_code)}
+                          {convertCaseCodeToArabic(c.caseCode)}
                         </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -953,7 +945,8 @@ function AdminDashboard() {
                           <button
                               disabled={isLoading}
                               onClick={() => handleCaseDetails(c)}
-                              className={`bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              className={`bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors 
+                                ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             {isLoading ? 'جاري التحميل...' : 'عرض التفاصيل'}
                           </button>
