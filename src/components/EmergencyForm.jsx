@@ -22,7 +22,7 @@ function EmergencyForm() {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const rescuerRanks = ['قائد', 'كشاف', 'مسعف'];
+  const rescuerRanks = ['قائد تحت التقييم', 'كشاف تحت التقييم'];
 
   const trainers = [
     'ابي عصمان',
