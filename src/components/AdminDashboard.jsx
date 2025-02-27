@@ -156,7 +156,7 @@ function AdminDashboard() {
     const applyFilters = (cases) => {
       // التأكد من وجود نسخة من الحالات
       let result = [...cases];
-      // فلتر رمز الحالة مع معالجة حساسية الأحرف والتنوع
+      // فلتر رمز الحالة مع معالجة حساسية الأحرف والتنويع
       if (filters.caseCode) {
         result = result.filter(c => {
           const normalizedFilterCode = filters.caseCode.trim().toLowerCase();
@@ -492,32 +492,48 @@ function AdminDashboard() {
   }, [filteredCases]);
   const exportToExcel = async () => {
     try {
-      // جلب البيانات الكاملة مع التفاصيل
-      const { data, error } = await supabase
-          .from('emergencyCases')
-          .select('*')
-          .order('date', { ascending: false });
-      if (error) {
-        console.error('خطأ في جلب البيانات للتصدير:', error);
-        toast.error('تعذر جلب البيانات للتصدير');
-        return;
-      }
+      // استخدام البيانات المفلترة مباشرة بدلاً من جلب كل البيانات
+      const dataToExport = filteredCases;
+
       // معالجة البيانات للتصدير
-      const processedData = data.map(item => ({
-        'رمز الحالة': item.case_code || 'غير محدد',
-        'اسم المسعف': item.rescuer_name || 'غير محدد',
-        'رتبة المسعف': item.rescuer_rank || 'غير محدد',
+      const processedData = dataToExport.map(item => ({
+        'رمز الحالة': convertCaseCodeToArabic(item.caseCode || item.case_code) || 'غير محدد',
+        'اسم المسعف': item.rescuerName || item.rescuer_name || 'غير محدد',
+        'رتبة المسعف': item.rescuerRank || item.rescuer_rank || 'غير محدد',
         'المدرب': item.trainer || 'غير محدد',
-        'التاريخ': item.date || 'غير محدد',
-        'تفاصيل الحالة': item.case_details || 'لا توجد تفاصيل'
+        'التاريخ': item.date ? new Date(item.date).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        }) : 'غير محدد',
+        'تفاصيل الحالة': item.caseDetails || item.case_details || 'لا توجد تفاصيل'
       }));
+
       // إنشاء ورقة عمل Excel
       const worksheet = XLSX.utils.json_to_sheet(processedData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'حالات الطوارئ');
+
+      // تعديل عرض الأعمدة
+      const columnWidths = [
+        { wch: 15 }, // رمز الحالة
+        { wch: 20 }, // اسم المسعف
+        { wch: 15 }, // رتبة المسعف
+        { wch: 20 }, // المدرب
+        { wch: 15 }, // التاريخ
+        { wch: 40 }  // تفاصيل الحالة
+      ];
+      worksheet['!cols'] = columnWidths;
+
       // حفظ الملف
-      const fileName = `حالات_الطوارئ_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`;
+      const fileName = `حالات_الطوارئ_${new Date().toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).replace(/\//g, '-')}.xlsx`;
+      
       XLSX.writeFile(workbook, fileName);
+
       // رسالة نجاح
       toast.success(`تم تصدير ${processedData.length} حالة إلى ملف إكسل`);
     } catch (err) {
