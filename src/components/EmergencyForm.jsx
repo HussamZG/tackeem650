@@ -298,11 +298,12 @@ function EmergencyForm() {
                             locale="ar" dateFormat="yyyy/MM/dd" className={inputClass} 
                             calendarClassName="custom-dark-calendar" 
                             popperContainer={CalendarPortalContainer} 
-                            placeholderText="يوم / شهر / سنة" 
+                            placeholderText="يوم / شهر / سنة"
+                            readOnly={true} 
                         />
                     </div>
 
-                    {/* Case Code Dropdown - Added to Mission Mode */}
+                    {/* Case Code Dropdown */}
                     <div className="relative" ref={codeRef}>
                         <label className={`${labelClass} text-cyan-400`}><Tag className="w-3.5 h-3.5" /> كود الحالة</label>
                         <div onClick={() => setOpenDropdown(p => ({...p, code: !p.code}))} className={selectBtnClass}>
@@ -363,7 +364,15 @@ function EmergencyForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className={`${labelClass} text-cyan-600`}><Calendar className="w-3.5 h-3.5" /> تاريخ الحالة</label>
-                        <DatePicker selected={evalData.date} onChange={(d) => setEvalData(p => ({...p, date: d}))} locale="ar" dateFormat="yyyy/MM/dd" className={inputClass} calendarClassName="custom-dark-calendar" popperContainer={CalendarPortalContainer} placeholderText="يوم / شهر / سنة" />
+                        <DatePicker 
+                            selected={evalData.date} 
+                            onChange={(d) => setEvalData(p => ({...p, date: d}))} 
+                            locale="ar" dateFormat="yyyy/MM/dd" className={inputClass} 
+                            calendarClassName="custom-dark-calendar" 
+                            popperContainer={CalendarPortalContainer} 
+                            placeholderText="يوم / شهر / سنة"
+                            readOnly={true}
+                        />
                     </div>
                     <div className="relative" ref={codeRef}>
                         <label className={`${labelClass} text-cyan-600`}><Tag className="w-3.5 h-3.5" /> كود الحالة</label>
@@ -448,44 +457,24 @@ function EmergencyForm() {
 
       {/* Footer & Styles */}
       <footer dir="ltr" className="w-full py-8 flex flex-col items-center justify-center border-t border-slate-900/50 bg-[#050505] mt-12 relative">
-    
-    {/* خط متدرج في الأعلى يعطي انطباعاً بالفصل الأنيق */}
-    <div className="absolute top-0 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-red-600/50 to-transparent"></div>
-
-    {/* الحاوية الرئيسية */}
-    <div className="flex flex-col items-center gap-4 group">
-        
-        {/* النص الرئيسي مع التأثيرات */}
-        <div className="relative flex items-center gap-4">
-            {/* خط زخرفي يسار */}
-            <div className="w-8 h-px bg-gradient-to-r from-transparent to-red-600/60 transition-all duration-500 group-hover:w-12"></div>
-            
-            <div className="relative">
-                {/* طبقة التوهج الخلفية */}
-                <span className="absolute inset-0 blur-sm text-red-600 text-xl font-mono font-black tracking-tighter opacity-60 select-none transition-opacity duration-300 group-hover:opacity-90">
-                    &lt;SHTAYER/&gt;
-                </span>
-                
-                {/* النص الأمامي المتدرج */}
-                <span className="relative text-xl font-mono font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-rose-500 to-red-500 select-none transition-all duration-300">
-                    &lt;SHTAYER/&gt;
-                </span>
+        <div className="absolute top-0 w-1/2 h-[1px] bg-gradient-to-r from-transparent via-red-600/50 to-transparent"></div>
+        <div className="flex flex-col items-center gap-4 group">
+            <div className="relative flex items-center gap-4">
+                <div className="w-8 h-px bg-gradient-to-r from-transparent to-red-600/60 transition-all duration-500 group-hover:w-12"></div>
+                <div className="relative">
+                    <span className="absolute inset-0 blur-sm text-red-600 text-xl font-mono font-black tracking-tighter opacity-60 select-none transition-opacity duration-300 group-hover:opacity-90">&lt;SHTAYER/&gt;</span>
+                    <span className="relative text-xl font-mono font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-rose-500 to-red-500 select-none transition-all duration-300">&lt;SHTAYER/&gt;</span>
+                </div>
+                <div className="w-8 h-px bg-gradient-to-l from-transparent to-red-600/60 transition-all duration-500 group-hover:w-12"></div>
             </div>
-
-            {/* خط زخرفي يمين */}
-            <div className="w-8 h-px bg-gradient-to-l from-transparent to-red-600/60 transition-all duration-500 group-hover:w-12"></div>
+            <div className="flex items-center gap-2 text-[10px] text-slate-700 font-mono tracking-[0.2em] uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                System Online
+                <span className="text-slate-800 mx-1">|</span>
+                Medical Response Interface
+            </div>
         </div>
-
-        {/* نص ثانوي يعطي "دمية" احترافية */}
-        <div className="flex items-center gap-2 text-[10px] text-slate-700 font-mono tracking-[0.2em] uppercase">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            System Online
-            <span className="text-slate-800 mx-1">|</span>
-            Medical Response Interface
-        </div>
-
-    </div>
-</footer>
+      </footer>
 
       <style>{`
         @keyframes heartbeat { 0% { transform: scale(1); } 14% { transform: scale(1.25); } 28% { transform: scale(1); } 42% { transform: scale(1.15); } 70% { transform: scale(1); } }
@@ -499,6 +488,36 @@ function EmergencyForm() {
         .react-datepicker__current-month, .react-datepicker__day-name, .react-datepicker__day { color: #cbd5e1 !important; }
         .react-datepicker__day--selected { background-color: #dc2626 !important; color: white !important; border-radius: 0.5rem !important; }
         .react-datepicker__day:hover { background-color: #475569 !important; border-radius: 0.5rem !important; }
+
+        /* --- حل مشكلة الموبايل (توسيط التقويم ومنع لوحة المفاتيح) --- */
+        .datepicker-portal-wrapper {
+          position: fixed; /* تغطية كاملة للشاشة */
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 99999;
+          pointer-events: none; /* السماح بالنقر على الخلفية لإغلاق التقويم إن أردت */
+          display: flex;
+          align-items: center; /* توسيط عمودي */
+          justify-content: center; /* توسيط أفقي */
+        }
+
+        /* السماح للتقويم نفسه باستقبال اللمس */
+        .datepicker-portal-wrapper .react-datepicker-popper {
+          pointer-events: auto;
+          z-index: 100000;
+          position: relative !important;
+          transform: none !important;
+        }
+
+        /* تنسيقات الموبايل */
+        @media (max-width: 768px) {
+          .custom-dark-calendar {
+            width: 90vw !important; /* عرض أكبر في الموبايل */
+            font-size: 16px !important; /* حجم خط أكبر للسهولة */
+          }
+        }
       `}</style>
     </div>
   );
