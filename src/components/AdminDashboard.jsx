@@ -44,7 +44,7 @@ function AdminDashboard() {
   const navigate = useNavigate();
   
   // --- Mode State ---
-  const [dashboardMode, setDashboardMode] = useState('individual');
+  const [dashboardMode, setDashboardMode] = useState('individual'); // 'individual' | 'team'
 
   // --- Data States ---
   const [emergencyCases, setEmergencyCases] = useState([]);
@@ -139,7 +139,6 @@ function AdminDashboard() {
     try {
         const { data, error } = await supabase.from('teamMissions').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        // FIXED: Added mapping for all fields
         const processed = data.map(item => ({
             ...item,
             senderName: item.sender_name,
@@ -226,23 +225,27 @@ function AdminDashboard() {
     finally { setIsLoading(false); setShowDeleteConfirm(false); setCasesToDelete([]); }
   };
 
+  // --- Evaluation Submission (Modified) ---
   const handleEvaluationSubmit = async () => {
-    const gradeValue = parseInt(inputGrade);
-    if (inputGrade && (isNaN(gradeValue) || gradeValue < 0 || gradeValue > 100)) {
+    const gradeValue = inputGrade === '' ? null : parseInt(inputGrade);
+    
+    // التحقق: القيمة يجب أن تكون بين 0 و 100
+    if (gradeValue !== null && (isNaN(gradeValue) || gradeValue < 0 || gradeValue > 100)) {
       toast.error('الرجاء إدخال درجة صحيحة بين 0 و 100');
       return;
     }
+    
     setIsSavingGrade(true);
     try {
       const { error } = await supabase
         .from('emergencyCases')
-        .update({ grade: gradeValue || null, notes: inputNotes })
+        .update({ grade: gradeValue, notes: inputNotes })
         .eq('case_unique_id', selectedCase.case_unique_id);
 
       if (error) throw error;
       
-      setEmergencyCases(prev => prev.map(c => c.case_unique_id === selectedCase.case_unique_id ? {...c, grade: gradeValue || null, notes: inputNotes} : c));
-      setSelectedCase(prev => ({...prev, grade: gradeValue || null, notes: inputNotes}));
+      setEmergencyCases(prev => prev.map(c => c.case_unique_id === selectedCase.case_unique_id ? {...c, grade: gradeValue, notes: inputNotes} : c));
+      setSelectedCase(prev => ({...prev, grade: gradeValue, notes: inputNotes}));
       toast.success('تم حفظ التقييم والملاحظات بنجاح');
     } catch (err) { toast.error('فشل حفظ البيانات'); } 
     finally { setIsSavingGrade(false); }
@@ -476,7 +479,7 @@ function AdminDashboard() {
                             {isUngraded ? (
                                 <span className="px-2 py-1 rounded-full text-[9px] font-bold bg-slate-800 text-amber-400 border border-amber-700/30">لم تُقيّم</span>
                             ) : (
-                                <span className={`px-2 py-1 rounded-full text-[9px] font-bold ${c.grade >= 85 ? 'bg-emerald-500/20 text-emerald-400' : c.grade >= 50 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>{c.grade}%</span>
+                                <span className="px-2 py-1 rounded-full text-[9px] font-bold bg-slate-800 text-emerald-400">{c.grade}%</span>
                             )}
                             </td>
                         </>
@@ -602,13 +605,20 @@ function AdminDashboard() {
                             </div>
                         </div>
                         
-                        {/* Grading Section */}
+                        {/* Grading Section (Modified) */}
                         <div className="border-t border-slate-800 pt-6">
                             <div className="flex flex-col sm:flex-row gap-6">
                                 <div className="w-full sm:w-1/3">
                                     <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><Award className="w-3 h-3"/> التقييم (0-100)</h4>
-                                    <input type="number" min="0" max="100" value={inputGrade} onChange={(e) => setInputGrade(e.target.value)} className="w-full bg-[#0a0a0a] text-4xl font-black text-center text-white outline-none border-b-4 border-slate-700 focus:border-red-600 transition-colors appearance-none h-20" placeholder="--"/>
-                                    <div className={`text-center text-sm font-bold mt-2 ${!inputGrade ? 'text-slate-600' : inputGrade >= 85 ? 'text-emerald-400' : inputGrade >= 50 ? 'text-amber-400' : 'text-red-500'}`}>{inputGrade ? (inputGrade >= 85 ? 'ممتاز' : inputGrade >= 50 ? 'جيد' : 'ضعيف') : '---'}</div>
+                                    <input 
+                                        type="number" 
+                                        min="0" 
+                                        max="100" 
+                                        value={inputGrade} 
+                                        onChange={(e) => setInputGrade(e.target.value)} 
+                                        className="w-full bg-[#0a0a0a] text-4xl font-black text-center text-white outline-none border-b-4 border-slate-700 focus:border-red-600 transition-colors appearance-none h-20" 
+                                        placeholder="--"
+                                    />
                                 </div>
                                 <div className="w-full sm:w-2/3">
                                     <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><StickyNote className="w-3 h-3"/> ملاحظات المدرب</h4>
@@ -625,9 +635,8 @@ function AdminDashboard() {
                     </div>
                  </div>
               ) : (
-                  // Team Mission Modal Content - UPDATED
+                  // Team Mission Modal Content
                   <div className="space-y-6">
-                      {/* Header: Sender & Code */}
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-[10px] text-slate-500 uppercase mb-1">قائد المهمة (المرسل)</p>
@@ -639,14 +648,12 @@ function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Date */}
                       <div className="flex items-center gap-3 text-sm bg-[#0a0a0a] p-3 rounded-xl border border-slate-800">
                         <Calendar className="w-4 h-4 text-cyan-400"/>
                         <span className="text-slate-400">تاريخ المهمة:</span>
                         <span className="text-white font-bold">{new Date(selectedCase.missionDate).toLocaleDateString('en-GB')}</span>
                       </div>
 
-                      {/* Vitals - Added for Team Mode */}
                       {(selectedCase.oxygen || selectedCase.pulse || selectedCase.pressure || selectedCase.temperature || selectedCase.sugar) && (
                         <div>
                           <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-4 flex items-center gap-2"><Stethoscope className="w-3 h-3"/> العلامات الحيوية</h4>
@@ -660,7 +667,6 @@ function AdminDashboard() {
                         </div>
                       )}
 
-                      {/* Techniques - Added for Team Mode */}
                       {selectedCase.techniquesUsed && selectedCase.techniquesUsed.length > 0 && (
                         <div className="border-t border-slate-800 pt-4">
                            <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><Zap className="w-3 h-3"/> التقنيات المستخدمة</h4>
@@ -675,7 +681,6 @@ function AdminDashboard() {
                         </div>
                       )}
 
-                      {/* Team Members */}
                       <div className="bg-[#0a0a0a] p-4 rounded-xl border border-slate-800">
                           <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-3 flex items-center gap-2"><Users className="w-3 h-3"/> أعضاء الفريق ({selectedCase.teamMembers ? selectedCase.teamMembers.length : 0})</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -688,7 +693,6 @@ function AdminDashboard() {
                           </div>
                       </div>
                       
-                      {/* Details */}
                       <div className="border-t border-slate-800 pt-4">
                           <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-2"><FileText className="w-3 h-3 inline ml-1"/> تفاصيل المهمة</h4>
                           <p className="text-slate-300 text-sm">{selectedCase.caseDetails || 'لا توجد تفاصيل'}</p>
