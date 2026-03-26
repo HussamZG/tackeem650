@@ -1,27 +1,21 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import DatePicker, { registerLocale } from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import ar from 'date-fns/locale/ar-SA';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 
 // استيراد الأيقونات
-import { 
-  Activity, HeartPulse, Wind, AlertTriangle, 
-  User, Shield, Search, Calendar, Tag, 
-  FileText, LogIn, Loader2, GraduationCap, Stethoscope, 
-  CircleAlert, CircleSlash, ChevronDown, Syringe, 
-  Bandage, Bone, Zap, Scissors, Droplets, 
-  Thermometer, Heart, RefreshCw, Plug, AlignCenterVertical, 
-  Move, Shirt, UserCheck, Droplet, Plus, Trash2, Users
+import {
+  Activity, HeartPulse, Wind, AlertTriangle,
+  User, Shield, Search, Calendar, Tag,
+  FileText, LogIn, Loader2, GraduationCap, Stethoscope,
+  CircleAlert, CircleSlash, ChevronDown, Syringe,
+  Bandage, Bone, Zap, Scissors, Droplets,
+  Thermometer, Heart, RefreshCw, Plug, AlignCenterVertical,
+  Move, Shirt, UserCheck, Droplet, Plus, Trash2, Users,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
-
-// تسجيل اللغة العربية
-registerLocale('ar', ar);
 
 // --- الثوابت (Constants) ---
 const rescuerRanks = ['قائد تحت التقييم', 'كشاف تحت التقييم'];
@@ -56,6 +50,158 @@ const caseCodeOptions = [
   { value: 'yellow', label: 'أصفر (متوسط)', Icon: CircleSlash, color: 'text-amber-400', hoverBg: 'hover:bg-amber-500/20' },
   { value: 'red', label: 'أحمر (حرج)', Icon: CircleAlert, color: 'text-red-500', hoverBg: 'hover:bg-red-500/20' },
 ];
+
+// Custom Tailwind DatePicker Component
+const CustomDatePicker = ({ selected, onChange, placeholder, className = "" }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(selected ? new Date(selected) : new Date());
+  const inputRef = useRef(null);
+  const calendarRef = useRef(null);
+
+  // Arabic month names
+  const arabicMonths = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+  ];
+
+  // Arabic day names (Saturday first)
+  // سبت، أحد، إثنين، ثلاثاء، أربعاء، خميس، جمعة
+  const arabicDays = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
+
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+
+    // Adjust for Arabic calendar (Saturday = 0)
+    // JS Sunday=0, Mon=1... Sat=6.
+    // We want Sat=0. Formula: (day + 1) % 7
+    const startingDayOfWeek = (firstDay.getDay() + 1) % 7;
+
+    const days = [];
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(day);
+    }
+    return days;
+  };
+
+  const days = useMemo(() => getDaysInMonth(currentMonth), [currentMonth]);
+
+  const handleDateClick = (day) => {
+    if (!day) return;
+    const selectedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    onChange(selectedDate);
+    setIsOpen(false);
+  };
+
+  const handlePrevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}/${month}/${day}`;
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target) &&
+          inputRef.current && !inputRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        type="text"
+        value={formatDate(selected)}
+        onClick={() => setIsOpen(!isOpen)}
+        placeholder={placeholder}
+        className={`${className} cursor-pointer`}
+        readOnly
+      />
+
+      {isOpen && (
+        <div
+          ref={calendarRef}
+          className="absolute z-50 mt-2 bg-[#151515] border border-slate-700 rounded-2xl shadow-2xl p-4 min-w-[280px] max-w-[320px]"
+          dir="rtl"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-700 rounded-lg transition-colors" type="button">
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </button>
+            <div className="text-center text-sm font-medium text-slate-300">
+              {arabicMonths[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+            </div>
+            <button onClick={handleNextMonth} className="p-2 hover:bg-slate-700 rounded-lg transition-colors" type="button">
+              <ChevronLeft className="w-4 h-4 text-slate-300" />
+            </button>
+          </div>
+
+          {/* Days of week */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {arabicDays.map((day, index) => (
+              <div key={index} className="text-center text-xs font-medium text-slate-500 py-2">{day}</div>
+            ))}
+          </div>
+
+          {/* Calendar days */}
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((day, index) => {
+              const isSelected = selected &&
+                selected.getDate() === day &&
+                selected.getMonth() === currentMonth.getMonth() &&
+                selected.getFullYear() === currentMonth.getFullYear();
+
+              const isToday = new Date().getDate() === day &&
+                new Date().getMonth() === currentMonth.getMonth() &&
+                new Date().getFullYear() === currentMonth.getFullYear();
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleDateClick(day)}
+                  disabled={!day}
+                  className={`h-8 w-8 text-sm rounded-lg transition-all duration-200 flex items-center justify-center ${
+                    !day ? 'cursor-default' : 'cursor-pointer hover:bg-slate-700'
+                  } ${isSelected ? 'bg-red-600 text-white hover:bg-red-700' : 'text-slate-300'} ${isToday && !isSelected ? 'ring-1 ring-slate-600' : ''}`}
+                  type="button"
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Today button */}
+          <div className="mt-4 pt-3 border-t border-slate-700">
+            <button
+              onClick={() => { onChange(new Date()); setIsOpen(false); }}
+              className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors text-sm"
+              type="button"
+            >
+              اليوم
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // --- المكون الرئيسي ---
 function EmergencyForm() {
@@ -202,8 +348,6 @@ function EmergencyForm() {
   const selectBtnClass = "w-full bg-[#0a0a0a] border border-slate-800 rounded-xl px-4 py-3 text-white transition-all text-sm h-[48px] flex justify-between items-center cursor-pointer hover:border-slate-700";
   const labelClass = "text-[11px] font-bold text-slate-500 uppercase tracking-widest mr-1 mb-2 flex items-center gap-2";
 
-  const CalendarPortalContainer = ({ children }) => createPortal(<div className="datepicker-portal-wrapper">{children}</div>, document.body);
-
   return (
     <div dir="rtl" className="min-h-screen bg-[#050505] text-slate-300 font-sans flex flex-col items-center overflow-x-hidden">
       <ToastContainer theme="dark" rtl position="top-center" autoClose={2000} />
@@ -275,7 +419,7 @@ function EmergencyForm() {
                     </div>
                     {openDropdown.trainer && (
                         <div className="absolute z-50 w-full mt-2 bg-[#151515] border border-slate-700 rounded-2xl shadow-2xl p-3">
-                           <input placeholder="بحث..." className="w-full bg-[#0a0a0a] border border-slate-800 rounded-lg px-3 py-2 text-xs mb-2 outline-none" onChange={(e) => setSearchQuery(e.target.value)} />
+                           <input placeholder="بحث..." className="w-full bg-[#0a0a0a] border border-slate-800 rounded-lg px-3 py-2 text-xs mb-2 outline-none text-white" onChange={(e) => setSearchQuery(e.target.value)} />
                            {trainers.filter(t => t.includes(searchQuery)).map(t => <div key={t} onClick={() => {setEvalData(p => ({...p, trainer: t})); setOpenDropdown(p => ({...p, trainer: false}))}} className="px-4 py-2 rounded-xl hover:bg-red-600 cursor-pointer text-sm">{t}</div>)}
                         </div>
                     )}
@@ -292,14 +436,11 @@ function EmergencyForm() {
                     </div>
                     <div>
                         <label className={`${labelClass} text-cyan-400`}><Calendar className="w-3.5 h-3.5" /> تاريخ المهمة</label>
-                        <DatePicker 
-                            selected={missionData.date} 
-                            onChange={(d) => setMissionData(p => ({...p, date: d}))} 
-                            locale="ar" dateFormat="yyyy/MM/dd" className={inputClass} 
-                            calendarClassName="custom-dark-calendar" 
-                            popperContainer={CalendarPortalContainer} 
-                            placeholderText="يوم / شهر / سنة"
-                            readOnly={true} 
+                        <CustomDatePicker
+                            selected={missionData.date}
+                            onChange={(d) => setMissionData(p => ({...p, date: d}))}
+                            placeholder="يوم / شهر / سنة"
+                            className={inputClass}
                         />
                     </div>
 
@@ -364,14 +505,11 @@ function EmergencyForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className={`${labelClass} text-cyan-600`}><Calendar className="w-3.5 h-3.5" /> تاريخ الحالة</label>
-                        <DatePicker 
-                            selected={evalData.date} 
-                            onChange={(d) => setEvalData(p => ({...p, date: d}))} 
-                            locale="ar" dateFormat="yyyy/MM/dd" className={inputClass} 
-                            calendarClassName="custom-dark-calendar" 
-                            popperContainer={CalendarPortalContainer} 
-                            placeholderText="يوم / شهر / سنة"
-                            readOnly={true}
+                        <CustomDatePicker
+                            selected={evalData.date}
+                            onChange={(d) => setEvalData(p => ({...p, date: d}))}
+                            placeholder="يوم / شهر / سنة"
+                            className={inputClass}
                         />
                     </div>
                     <div className="relative" ref={codeRef}>
@@ -482,42 +620,6 @@ function EmergencyForm() {
         @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.2); opacity: 1; } }
         .animate-breathe { animation: breathe 3s ease-in-out infinite; }
         .animate-pulse-fast { animation: pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        
-        .custom-dark-calendar { background-color: #151515 !important; border: 1px solid #334155 !important; border-radius: 1.5rem !important; font-family: sans-serif !important; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important; overflow: hidden; }
-        .react-datepicker__header { background-color: #0f172a !important; border-bottom: 1px solid #334155 !important; }
-        .react-datepicker__current-month, .react-datepicker__day-name, .react-datepicker__day { color: #cbd5e1 !important; }
-        .react-datepicker__day--selected { background-color: #dc2626 !important; color: white !important; border-radius: 0.5rem !important; }
-        .react-datepicker__day:hover { background-color: #475569 !important; border-radius: 0.5rem !important; }
-
-        /* --- حل مشكلة الموبايل (توسيط التقويم ومنع لوحة المفاتيح) --- */
-        .datepicker-portal-wrapper {
-          position: fixed; /* تغطية كاملة للشاشة */
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          z-index: 99999;
-          pointer-events: none; /* السماح بالنقر على الخلفية لإغلاق التقويم إن أردت */
-          display: flex;
-          align-items: center; /* توسيط عمودي */
-          justify-content: center; /* توسيط أفقي */
-        }
-
-        /* السماح للتقويم نفسه باستقبال اللمس */
-        .datepicker-portal-wrapper .react-datepicker-popper {
-          pointer-events: auto;
-          z-index: 100000;
-          position: relative !important;
-          transform: none !important;
-        }
-
-        /* تنسيقات الموبايل */
-        @media (max-width: 768px) {
-          .custom-dark-calendar {
-            width: 90vw !important; /* عرض أكبر في الموبايل */
-            font-size: 16px !important; /* حجم خط أكبر للسهولة */
-          }
-        }
       `}</style>
     </div>
   );
